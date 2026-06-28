@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Anton, Inter } from "next/font/google";
-import VisitorTracker from "@/components/VisitorTracker";
 import "./globals.css";
 
 const display = Anton({
@@ -35,7 +34,6 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={`${display.variable} ${sans.variable}`}>
       <body className="bg-ink font-sans text-paper antialiased">
-        <VisitorTracker />
         {children}
       </body>
     </html>

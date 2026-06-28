@@ -8,10 +8,12 @@ import Legacy from "@/components/Legacy";
 import Gallery from "@/components/Gallery";
 import Credits from "@/components/Credits";
 import Footer from "@/components/Footer";
+import VisitorTracker from "@/components/VisitorTracker";
 
 export default function Home() {
   return (
     <>
+      <VisitorTracker />
       <Nav />
       <main>
         <Hero />
