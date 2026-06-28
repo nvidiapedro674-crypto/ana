@@ -35,6 +35,7 @@ export default function VisitorsPage() {
   const [visits, setVisits] = useState<Visit[]>([]);
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const hasToken = token.trim().length > 0;
 
@@ -70,11 +71,11 @@ export default function VisitorsPage() {
       });
 
     return () => controller.abort();
-  }, [hasToken, token]);
+  }, [hasToken, token, refreshKey]);
 
   const tokenHint = useMemo(() => {
     if (!token) return "Cole seu token aqui e clique em Carregar.";
-    return "Token ativo. Os dados são carregados automaticamente.";
+    return "Token ativo. Clique em Recarregar depois de visitar a home.";
   }, [token]);
 
   return (
@@ -107,6 +108,13 @@ export default function VisitorsPage() {
                 className="rounded-2xl bg-paper px-4 py-3 text-sm font-semibold text-ink transition hover:bg-neutral-200"
               >
                 Carregar
+              </button>
+              <button
+                type="button"
+                onClick={() => setRefreshKey((current) => current + 1)}
+                className="rounded-2xl bg-neutral-700 px-4 py-3 text-sm font-semibold text-paper transition hover:bg-neutral-600"
+              >
+                Recarregar
               </button>
             </div>
             <p className="mt-2 text-xs text-neutral-500">{tokenHint}</p>

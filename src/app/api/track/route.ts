@@ -38,31 +38,114 @@ function getClientIp(request: NextRequest): string {
   return "unknown";
 }
 
-async function getGeoData(ip: string): Promise<Record<string, unknown> | null> {
+function decodeHeader(value: string | null): string | null {
+  if (!value) return null;
+  try {
+    return decodeURIComponent(value) || null;
+  } catch {
+    return value || null;
+  }
+}
+
+// Vercel injeta os dados de geolocalização nos headers da requisição (grátis e
+// instantâneo). É a fonte mais confiável em produção.
+function getGeoFromHeaders(request: NextRequest): Record<string, unknown> | null {
+  const city = decodeHeader(request.headers.get("x-vercel-ip-city"));
+  const country = decodeHeader(request.headers.get("x-vercel-ip-country"));
+  const region = decodeHeader(request.headers.get("x-vercel-ip-country-region"));
+  const latitude = decodeHeader(request.headers.get("x-vercel-ip-latitude"));
+  const longitude = decodeHeader(request.headers.get("x-vercel-ip-longitude"));
+  const timezone = decodeHeader(request.headers.get("x-vercel-ip-timezone"));
+  const postal = decodeHeader(request.headers.get("x-vercel-ip-postal-code"));
+
+  if (!city && !country && !region) return null;
+
+  return {
+    country,
+    region,
+    city,
+    postal,
+    latitude,
+    longitude,
+    timezone,
+    org: null,
+    source: "vercel-headers",
+  };
+}
+
+// Fallback: consulta uma API externa de geolocalização por IP. Tenta dois
+// provedores porque o gratuito (ipapi.co) costuma estourar o limite e devolver
+// { error: true } com status 200.
+async function getGeoFromApi(ip: string): Promise<Record<string, unknown> | null> {
   if (!ip || ip === "unknown") return null;
 
+  // Provedor 1: ipwho.is (sem chave, limite generoso)
+  try {
+    const response = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}`, {
+      headers: { Accept: "application/json" },
+    });
+    if (response.ok) {
+      const data = (await response.json()) as Record<string, unknown>;
+      if (data.success !== false && data.city) {
+        return {
+          country: data.country ?? null,
+          region: data.region ?? null,
+          city: data.city ?? null,
+          postal: data.postal ?? null,
+          latitude: data.latitude ?? null,
+          longitude: data.longitude ?? null,
+          timezone:
+            (data.timezone as Record<string, unknown> | undefined)?.id ?? data.timezone ?? null,
+          org: (data.connection as Record<string, unknown> | undefined)?.isp ?? null,
+          source: "ipwho.is",
+        };
+      }
+    }
+  } catch {
+    // tenta o próximo provedor
+  }
+
+  // Provedor 2: ipapi.co
   try {
     const response = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/json/`, {
       headers: { Accept: "application/json" },
     });
-
-    if (!response.ok) return null;
-
-    const data = (await response.json()) as Record<string, unknown>;
-
-    return {
-      country: data.country_name ?? data.country ?? null,
-      region: data.region ?? null,
-      city: data.city ?? null,
-      postal: data.postal ?? null,
-      latitude: data.latitude ?? null,
-      longitude: data.longitude ?? null,
-      timezone: data.timezone ?? null,
-      org: data.org ?? null,
-    };
+    if (response.ok) {
+      const data = (await response.json()) as Record<string, unknown>;
+      if (!data.error && data.city) {
+        return {
+          country: data.country_name ?? data.country ?? null,
+          region: data.region ?? null,
+          city: data.city ?? null,
+          postal: data.postal ?? null,
+          latitude: data.latitude ?? null,
+          longitude: data.longitude ?? null,
+          timezone: data.timezone ?? null,
+          org: data.org ?? null,
+          source: "ipapi.co",
+        };
+      }
+    }
   } catch {
-    return null;
+    // sem geo
   }
+
+  return null;
+}
+
+async function getGeoData(
+  request: NextRequest,
+  ip: string
+): Promise<Record<string, unknown> | null> {
+  const headerGeo = getGeoFromHeaders(request);
+  // Se os headers já trazem cidade, usa direto (mais rápido e confiável).
+  if (headerGeo?.city) return headerGeo;
+
+  const apiGeo = await getGeoFromApi(ip);
+  if (apiGeo) return apiGeo;
+
+  // Como último recurso devolve o que veio dos headers (país/região), mesmo sem cidade.
+  return headerGeo;
 }
 
 function isLocalDev() {
@@ -154,7 +237,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as TrackPayload;
     const ip = getClientIp(request);
-    const geo = await getGeoData(ip);
+    const geo = await getGeoData(request, ip);
 
     const entry = {
       timestamp: new Date().toISOString(),
