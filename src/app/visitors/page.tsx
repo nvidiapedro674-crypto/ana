@@ -114,6 +114,21 @@ export default function VisitorsPage() {
         </div>
 
         <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="rounded-3xl border border-neutral-800 bg-[#111113] p-5 text-sm text-neutral-300">
+              <p className="text-xs uppercase tracking-[0.35em] text-neutral-500">Status</p>
+              <p className="mt-3 text-xl font-semibold text-paper">{status === "idle" ? "Aguardando" : status === "loading" ? "Carregando" : status === "ready" ? "Pronto" : "Erro"}</p>
+            </div>
+            <div className="rounded-3xl border border-neutral-800 bg-[#111113] p-5 text-sm text-neutral-300">
+              <p className="text-xs uppercase tracking-[0.35em] text-neutral-500">Visitas</p>
+              <p className="mt-3 text-xl font-semibold text-paper">{visits.length}</p>
+            </div>
+            <div className="rounded-3xl border border-neutral-800 bg-[#111113] p-5 text-sm text-neutral-300">
+              <p className="text-xs uppercase tracking-[0.35em] text-neutral-500">Token</p>
+              <p className="mt-3 max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-sm font-medium text-paper">{token || "Não informado"}</p>
+            </div>
+          </div>
+
           {status === "loading" && (
             <div className="rounded-3xl border border-neutral-700 bg-[#111113] p-6 text-sm text-neutral-300">
               Carregando visitantes...
@@ -128,7 +143,13 @@ export default function VisitorsPage() {
 
           {status === "ready" && visits.length === 0 && (
             <div className="rounded-3xl border border-neutral-700 bg-[#111113] p-6 text-sm text-neutral-300">
-              Nenhuma visita encontrada. Verifique se o token está correto.
+              <p className="font-semibold text-paper">Nenhuma visita encontrada.</p>
+              <p className="mt-2 text-sm text-neutral-400">
+                Primeiro acesse a página inicial e gere uma visita. Em seguida, recarregue esta página.
+              </p>
+              <p className="mt-4 text-xs text-neutral-500">
+                Se você já acessou o site e ainda não vê nada, pode ser porque o registro ainda não foi propagado.
+              </p>
             </div>
           )}
 
